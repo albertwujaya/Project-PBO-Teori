@@ -1,0 +1,24 @@
+package com.example.healthapp;
+
+public class Provider {
+    private final String id;
+    private String name;
+    private String address;
+
+    public Provider(String id, String name, String address) {
+        this.id = id;
+        this.name = name;
+        this.address = address;
+    }
+
+    public String getId() { return id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
+
+    @Override
+    public String toString() {
+        return String.format("Provider[id=%s,name=%s,address=%s]", id, name, address);
+    }
+}

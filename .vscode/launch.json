@@ -1,0 +1,28 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Run Health App GUI",
+      "request": "launch",
+      "mainClass": "com.example.healthapp.gui.IntegratedHealthAppGUI",
+      "vmArgs": "--module-path \"D:\\javafx-sdk-21\\lib\" --add-modules javafx.controls,javafx.fxml"
+    },
+  
+        {
+            "type": "java",
+            "name": "Launch HealthApp GUI",
+            "request": "launch",
+            "mainClass": "com.example.healthapp.gui.IntegratedHealthAppGUI",
+            "vmArgs": "--module-path /path/to/javafx-sdk/lib --add-modules javafx.controls,javafx.fxml"
+        },
+        {
+           "type": "java",
+            "name": "Launch Health App GUI",
+            "request": "launch",
+            "mainClass": "com.example.healthapp.gui.IntegratedHealthAppGUI",
+            "vmArgs": "--module-path \"D:\\javafx-sdk-21\\lib\" --add-modules javafx.controls,javafx.fxml" 
+}
+
+    ]
+}

@@ -1,0 +1,8 @@
+{   
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar",
+        "/path/to/javafx-sdk-21/lib/**/*.jar"
+    ],
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.configuration.updateRunConfiguration": "automatic",      
+}
