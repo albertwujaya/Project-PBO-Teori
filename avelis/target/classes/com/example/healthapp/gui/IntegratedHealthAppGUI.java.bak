@@ -1,0 +1,863 @@
+package com.example.healthapp.gui;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
+import com.example.healthapp.Appointment;
+import com.example.healthapp.Claim;
+import com.example.healthapp.InMemoryRepository;
+import com.example.healthapp.InsuranceService;
+import com.example.healthapp.MockNewsService;
+import com.example.healthapp.NewsArticle;
+import com.example.healthapp.NewsService;
+import com.example.healthapp.Patient;
+import com.example.healthapp.Policy;
+import com.example.healthapp.Provider;
+
+import javafx.application.Application;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.DatePicker;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.stage.Stage;
+
+public class IntegratedHealthAppGUI extends Application {
+    
+    // Services and Repositories
+    private InMemoryRepository<Patient> patientRepo;
+    private InMemoryRepository<Policy> policyRepo;
+    private InMemoryRepository<Provider> providerRepo;
+    private InsuranceService insuranceService;
+    private NewsService newsService;
+    
+    // Current user
+    private Patient currentPatient;
+    
+    // UI Components
+    private BorderPane mainPane;
+    private StackPane contentArea;
+    private DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+    private DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+    
+    @Override
+    public void start(Stage primaryStage) {
+        // Initialize repositories and services
+        initializeBackend();
+        
+        mainPane = new BorderPane();
+        
+        // Left sidebar
+        VBox sidebar = createSidebar();
+        mainPane.setLeft(sidebar);
+        
+        // Content area
+        contentArea = new StackPane();
+        contentArea.setStyle("-fx-background-color: #f0f0f0;");
+        
+        // Show home screen by default
+        showHomeScreen();
+        
+        mainPane.setCenter(contentArea);
+        
+        Scene scene = new Scene(mainPane, 1400, 800);
+        primaryStage.setTitle("Haavermut - Health Application");
+        primaryStage.setScene(scene);
+        primaryStage.show();
+    }
+    
+    private void initializeBackend() {
+        // Initialize repositories
+        patientRepo = new InMemoryRepository<>();
+        policyRepo = new InMemoryRepository<>();
+        providerRepo = new InMemoryRepository<>();
+        
+        // Initialize services
+        insuranceService = new InsuranceService(patientRepo, policyRepo, providerRepo);
+        newsService = new MockNewsService();
+        
+        // Create sample data
+        createSampleData();
+    }
+    
+    private void createSampleData() {
+        // Create providers
+        Provider prov1 = new Provider("HSP01", "Rumah Sakit Sehat", "Jakarta");
+        Provider prov2 = new Provider("HSP02", "Klinik Medika", "Bandung");
+        Provider prov3 = new Provider("HSP03", "RS Harapan Kita", "Surabaya");
+        providerRepo.save(prov1.getId(), prov1);
+        providerRepo.save(prov2.getId(), prov2);
+        providerRepo.save(prov3.getId(), prov3);
+        
+        // Create patient
+        currentPatient = new Patient("P001", "Budi Santoso", "budi@example.com", LocalDate.of(1990, 5, 20));
+        patientRepo.save(currentPatient.getId(), currentPatient);
+        
+        // Enroll patient in policy
+        Policy policy = insuranceService.enroll(currentPatient.getId());
+        
+        // Add appointments
+        Appointment appt1 = new Appointment(currentPatient.getId(), prov1.getId(), 
+            LocalDateTime.now().plusDays(3), "General checkup");
+        Appointment appt2 = new Appointment(currentPatient.getId(), prov2.getId(), 
+            LocalDateTime.now().plusDays(7), "Dental examination");
+        Appointment appt3 = new Appointment(currentPatient.getId(), prov3.getId(), 
+            LocalDateTime.now().plusDays(14), "Follow-up consultation");
+        
+        currentPatient.addAppointment(appt1);
+        currentPatient.addAppointment(appt2);
+        currentPatient.addAppointment(appt3);
+        patientRepo.save(currentPatient.getId(), currentPatient);
+        
+        // Submit claims
+        insuranceService.submitClaim(currentPatient.getId(), 2500000.0, 
+            LocalDate.now().minusDays(5), prov1.getId(), "Surgery X");
+        insuranceService.submitClaim(currentPatient.getId(), 500000.0, 
+            LocalDate.now().minusDays(2), prov2.getId(), "Dental treatment");
+        
+        // Approve first claim
+        List<Claim> claims = policy.getClaims();
+        if (!claims.isEmpty()) {
+            insuranceService.reviewClaim(policy.getPolicyNumber(), claims.get(0).getId(), true);
+        }
+    }
+    
+    private VBox createSidebar() {
+        VBox sidebar = new VBox(20);
+        sidebar.setPrefWidth(250);
+        sidebar.setPadding(new Insets(30, 20, 30, 20));
+        sidebar.setStyle("-fx-background-color: #2d3436;");
+        
+        // Logo area
+        VBox logoBox = new VBox(10);
+        logoBox.setAlignment(Pos.CENTER);
+        
+        Pane logoPane = new Pane();
+        logoPane.setPrefSize(80, 80);
+        logoPane.setStyle("-fx-background-color: linear-gradient(to bottom, #00b894, #00cec9); -fx-background-radius: 10;");
+        
+        Label appName = new Label("haavermut");
+        appName.setFont(Font.font("Arial", FontWeight.BOLD, 20));
+        appName.setTextFill(Color.WHITE);
+        appName.setStyle("-fx-background-color: #ff6348; -fx-padding: 5 15; -fx-background-radius: 5;");
+        
+        logoBox.getChildren().addAll(logoPane, appName);
+        
+        // Menu section
+        Label menuLabel = new Label("Menu Atas");
+        menuLabel.setFont(Font.font("Arial", FontWeight.BOLD, 16));
+        menuLabel.setTextFill(Color.web("#95a5a6"));
+        menuLabel.setPadding(new Insets(30, 0, 10, 0));
+        
+        // Menu buttons
+        VBox menuButtons = new VBox(10);
+        Button btnBeranda = createMenuButton("Beranda", true);
+        Button btnAppointments = createMenuButton("Janji Temu", false);
+        Button btnClaims = createMenuButton("Klaim Asuransi", false);
+        Button btnNews = createMenuButton("Berita Kesehatan", false);
+        
+        btnBeranda.setOnAction(e -> {
+            resetMenuButtons(menuButtons);
+            btnBeranda.setStyle("-fx-background-color: #636e72; -fx-text-fill: white; -fx-background-radius: 8;");
+            showHomeScreen();
+        });
+        btnAppointments.setOnAction(e -> {
+            resetMenuButtons(menuButtons);
+            btnAppointments.setStyle("-fx-background-color: #636e72; -fx-text-fill: white; -fx-background-radius: 8;");
+            showAppointmentsScreen();
+        });
+        btnClaims.setOnAction(e -> {
+            resetMenuButtons(menuButtons);
+            btnClaims.setStyle("-fx-background-color: #636e72; -fx-text-fill: white; -fx-background-radius: 8;");
+            showClaimsScreen();
+        });
+        btnNews.setOnAction(e -> {
+            resetMenuButtons(menuButtons);
+            btnNews.setStyle("-fx-background-color: #636e72; -fx-text-fill: white; -fx-background-radius: 8;");
+            showNewsScreen();
+        });
+        
+        menuButtons.getChildren().addAll(btnBeranda, btnAppointments, btnClaims, btnNews);
+        
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+        
+        // Bottom navigation
+        HBox bottomNav = new HBox(15);
+        bottomNav.setAlignment(Pos.CENTER);
+        Button btnHome = createIconButton("⌂");
+        Button btnCalendar = createIconButton("☰");
+        Button btnProfile = createIconButton("👤");
+        btnProfile.setOnAction(e -> showPatientProfile());
+        bottomNav.getChildren().addAll(btnHome, btnCalendar, btnProfile);
+        
+        sidebar.getChildren().addAll(logoBox, menuLabel, menuButtons, spacer, bottomNav);
+        
+        return sidebar;
+    }
+    
+    private void resetMenuButtons(VBox menuButtons) {
+        for (var node : menuButtons.getChildren()) {
+            if (node instanceof Button) {
+                Button btn = (Button) node;
+                btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #b2bec3; -fx-background-radius: 8;");
+            }
+        }
+    }
+    
+    private Button createMenuButton(String text, boolean active) {
+        Button btn = new Button(text);
+        btn.setMaxWidth(Double.MAX_VALUE);
+        btn.setAlignment(Pos.CENTER_LEFT);
+        btn.setPadding(new Insets(12, 15, 12, 15));
+        btn.setFont(Font.font("Arial", 13));
+        
+        if (active) {
+            btn.setStyle("-fx-background-color: #636e72; -fx-text-fill: white; -fx-background-radius: 8;");
+        } else {
+            btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #b2bec3; -fx-background-radius: 8;");
+            btn.setOnMouseEntered(e -> {
+                if (!btn.getStyle().contains("#636e72")) {
+                    btn.setStyle("-fx-background-color: #4a5456; -fx-text-fill: white; -fx-background-radius: 8;");
+                }
+            });
+            btn.setOnMouseExited(e -> {
+                if (!btn.getStyle().contains("#636e72")) {
+                    btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #b2bec3; -fx-background-radius: 8;");
+                }
+            });
+        }
+        
+        return btn;
+    }
+    
+    private Button createIconButton(String icon) {
+        Button btn = new Button(icon);
+        btn.setPrefSize(45, 45);
+        btn.setFont(Font.font(18));
+        btn.setStyle("-fx-background-color: #636e72; -fx-text-fill: white; -fx-background-radius: 8;");
+        btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color: #4a5456; -fx-text-fill: white; -fx-background-radius: 8;"));
+        btn.setOnMouseExited(e -> btn.setStyle("-fx-background-color: #636e72; -fx-text-fill: white; -fx-background-radius: 8;"));
+        return btn;
+    }
+    
+    private void showHomeScreen() {
+        VBox homeScreen = new VBox(20);
+        homeScreen.setPadding(new Insets(30));
+        homeScreen.setStyle("-fx-background-color: white;");
+        
+        // Header with patient name
+        HBox header = createScreenHeader("Beranda", 
+            "Selamat datang, " + currentPatient.getName() + "!");
+        
+        // Quick stats
+        GridPane statsGrid = new GridPane();
+        statsGrid.setHgap(15);
+        statsGrid.setVgap(15);
+        
+        int appointmentCount = currentPatient.getAppointments().size();
+        int claimCount = currentPatient.isEnrolled() ? currentPatient.getPolicy().getClaims().size() : 0;
+        
+        statsGrid.add(createStatCard("Janji Temu", String.valueOf(appointmentCount), "#3498db"), 0, 0);
+        statsGrid.add(createStatCard("Klaim", String.valueOf(claimCount), "#e74c3c"), 1, 0);
+        statsGrid.add(createStatCard("Status Polis", 
+            currentPatient.isEnrolled() ? "AKTIF" : "TIDAK AKTIF", "#2ecc71"), 2, 0);
+        
+        // Upcoming appointments
+        Label upcomingLabel = new Label("Janji Temu Mendatang");
+        upcomingLabel.setFont(Font.font("Arial", FontWeight.BOLD, 18));
+        upcomingLabel.setPadding(new Insets(10, 0, 10, 0));
+        
+        VBox appointmentsList = new VBox(10);
+        List<Appointment> appointments = currentPatient.getAppointments();
+        if (appointments.isEmpty()) {
+            Label noAppt = new Label("Tidak ada janji temu");
+            noAppt.setTextFill(Color.web("#999"));
+            appointmentsList.getChildren().add(noAppt);
+        } else {
+            for (Appointment appt : appointments) {
+                appointmentsList.getChildren().add(createAppointmentCard(appt));
+            }
+        }
+        
+        // Recent news
+        Label newsLabel = new Label("Berita Kesehatan Terkini");
+        newsLabel.setFont(Font.font("Arial", FontWeight.BOLD, 18));
+        newsLabel.setPadding(new Insets(20, 0, 10, 0));
+        
+        VBox newsList = new VBox(10);
+        List<NewsArticle> news = newsService.fetchLatest(3);
+        for (NewsArticle article : news) {
+            newsList.getChildren().add(createNewsCard(article));
+        }
+        
+        homeScreen.getChildren().addAll(header, statsGrid, upcomingLabel, appointmentsList, newsLabel, newsList);
+        
+        ScrollPane scrollPane = new ScrollPane(homeScreen);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background: white; -fx-background-color: white;");
+        
+        contentArea.getChildren().clear();
+        contentArea.getChildren().add(scrollPane);
+    }
+    
+    private void showAppointmentsScreen() {
+        VBox apptScreen = new VBox(20);
+        apptScreen.setPadding(new Insets(30));
+        apptScreen.setStyle("-fx-background-color: white;");
+        
+        HBox header = createScreenHeader("Janji Temu", "Kelola jadwal kunjungan Anda");
+        
+        // Add new appointment button
+        Button btnNew = new Button("+ Buat Janji Temu Baru");
+        btnNew.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-size: 13; -fx-padding: 10 20; -fx-background-radius: 5;");
+        btnNew.setOnAction(e -> showNewAppointmentDialog());
+        
+        // Appointments list
+        VBox appointmentsList = new VBox(15);
+        List<Appointment> appointments = currentPatient.getAppointments();
+        
+        if (appointments.isEmpty()) {
+            Label empty = new Label("Belum ada janji temu. Buat yang pertama!");
+            empty.setFont(Font.font("Arial", 14));
+            empty.setTextFill(Color.web("#999"));
+            empty.setPadding(new Insets(30));
+            appointmentsList.getChildren().add(empty);
+        } else {
+            for (Appointment appt : appointments) {
+                appointmentsList.getChildren().add(createDetailedAppointmentCard(appt));
+            }
+        }
+        
+        apptScreen.getChildren().addAll(header, btnNew, appointmentsList);
+        
+        ScrollPane scrollPane = new ScrollPane(apptScreen);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background: white; -fx-background-color: white;");
+        
+        contentArea.getChildren().clear();
+        contentArea.getChildren().add(scrollPane);
+    }
+    
+    private void showClaimsScreen() {
+        VBox claimsScreen = new VBox(20);
+        claimsScreen.setPadding(new Insets(30));
+        claimsScreen.setStyle("-fx-background-color: white;");
+        
+        HBox header = createScreenHeader("Klaim Asuransi", "Status klaim Anda");
+        
+        if (!currentPatient.isEnrolled()) {
+            Label notEnrolled = new Label("Anda belum terdaftar dalam polis asuransi");
+            notEnrolled.setFont(Font.font("Arial", FontWeight.BOLD, 16));
+            notEnrolled.setTextFill(Color.web("#e74c3c"));
+            claimsScreen.getChildren().addAll(header, notEnrolled);
+        } else {
+            // Policy info
+            Policy policy = currentPatient.getPolicy();
+            VBox policyCard = createPolicyInfoCard(policy);
+            
+            // Submit claim button
+            Button btnSubmit = new Button("+ Ajukan Klaim Baru");
+            btnSubmit.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-size: 13; -fx-padding: 10 20; -fx-background-radius: 5;");
+            btnSubmit.setOnAction(e -> showNewClaimDialog());
+            
+            // Claims list
+            Label claimsLabel = new Label("Daftar Klaim");
+            claimsLabel.setFont(Font.font("Arial", FontWeight.BOLD, 16));
+            claimsLabel.setPadding(new Insets(10, 0, 10, 0));
+            
+            VBox claimsList = new VBox(15);
+            List<Claim> claims = policy.getClaims();
+            
+            if (claims.isEmpty()) {
+                Label empty = new Label("Belum ada klaim yang diajukan");
+                empty.setTextFill(Color.web("#999"));
+                claimsList.getChildren().add(empty);
+            } else {
+                for (Claim claim : claims) {
+                    claimsList.getChildren().add(createClaimCard(claim));
+                }
+            }
+            
+            claimsScreen.getChildren().addAll(header, policyCard, btnSubmit, claimsLabel, claimsList);
+        }
+        
+        ScrollPane scrollPane = new ScrollPane(claimsScreen);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background: white; -fx-background-color: white;");
+        
+        contentArea.getChildren().clear();
+        contentArea.getChildren().add(scrollPane);
+    }
+    
+    private void showNewsScreen() {
+        VBox newsScreen = new VBox(20);
+        newsScreen.setPadding(new Insets(30));
+        newsScreen.setStyle("-fx-background-color: white;");
+        
+        HBox header = createScreenHeader("Berita Kesehatan", "Informasi dan artikel terkini");
+        
+        VBox newsList = new VBox(15);
+        List<NewsArticle> news = newsService.fetchLatest(10);
+        
+        for (NewsArticle article : news) {
+            newsList.getChildren().add(createDetailedNewsCard(article));
+        }
+        
+        newsScreen.getChildren().addAll(header, newsList);
+        
+        ScrollPane scrollPane = new ScrollPane(newsScreen);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background: white; -fx-background-color: white;");
+        
+        contentArea.getChildren().clear();
+        contentArea.getChildren().add(scrollPane);
+    }
+    
+    private void showPatientProfile() {
+        VBox profileScreen = new VBox(20);
+        profileScreen.setPadding(new Insets(30));
+        profileScreen.setStyle("-fx-background-color: white;");
+        
+        HBox header = createScreenHeader("Profil Pasien", "Informasi akun Anda");
+        
+        // Profile card
+        VBox profileCard = new VBox(15);
+        profileCard.setPadding(new Insets(25));
+        profileCard.setStyle("-fx-background-color: #f8f9fa; -fx-background-radius: 10;");
+        profileCard.setMaxWidth(600);
+        
+        Label nameLabel = new Label("Nama: " + currentPatient.getName());
+        nameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 16));
+        
+        Label idLabel = new Label("ID Pasien: " + currentPatient.getId());
+        Label emailLabel = new Label("Email: " + currentPatient.getEmail());
+        Label birthLabel = new Label("Tanggal Lahir: " + currentPatient.getBirthDate().format(dateFormatter));
+        Label policyLabel = new Label("Status Polis: " + 
+            (currentPatient.isEnrolled() ? "Aktif - " + currentPatient.getPolicy().getPolicyNumber() : "Tidak Aktif"));
+        
+        profileCard.getChildren().addAll(nameLabel, idLabel, emailLabel, birthLabel, policyLabel);
+        
+        profileScreen.getChildren().addAll(header, profileCard);
+        
+        ScrollPane scrollPane = new ScrollPane(profileScreen);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background: white; -fx-background-color: white;");
+        
+        contentArea.getChildren().clear();
+        contentArea.getChildren().add(scrollPane);
+    }
+    
+    private HBox createScreenHeader(String title, String subtitle) {
+        HBox header = new HBox(20);
+        header.setAlignment(Pos.CENTER_LEFT);
+        
+        VBox textBox = new VBox(5);
+        Label titleLabel = new Label(title);
+        titleLabel.setFont(Font.font("Arial", FontWeight.BOLD, 24));
+        Label subtitleLabel = new Label(subtitle);
+        subtitleLabel.setFont(Font.font("Arial", 14));
+        subtitleLabel.setTextFill(Color.web("#666"));
+        textBox.getChildren().addAll(titleLabel, subtitleLabel);
+        
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        
+        Label dateLabel = new Label(LocalDate.now().format(dateFormatter));
+        dateLabel.setFont(Font.font("Arial", 12));
+        dateLabel.setTextFill(Color.web("#999"));
+        
+        header.getChildren().addAll(textBox, spacer, dateLabel);
+        return header;
+    }
+    
+    private VBox createStatCard(String label, String value, String color) {
+        VBox card = new VBox(10);
+        card.setPrefSize(180, 100);
+        card.setPadding(new Insets(20));
+        card.setStyle("-fx-background-color: " + color + "; -fx-background-radius: 10;");
+        card.setAlignment(Pos.CENTER);
+        
+        Label valueLabel = new Label(value);
+        valueLabel.setFont(Font.font("Arial", FontWeight.BOLD, 32));
+        valueLabel.setTextFill(Color.WHITE);
+        
+        Label labelText = new Label(label);
+        labelText.setFont(Font.font("Arial", 14));
+        labelText.setTextFill(Color.WHITE);
+        
+        card.getChildren().addAll(valueLabel, labelText);
+        return card;
+    }
+    
+    private HBox createAppointmentCard(Appointment appt) {
+        HBox card = new HBox(15);
+        card.setPadding(new Insets(15));
+        card.setStyle("-fx-background-color: #f8f9fa; -fx-background-radius: 8;");
+        card.setMaxWidth(700);
+        
+        Provider provider = providerRepo.findById(appt.getProviderId()).orElse(null);
+        
+        VBox content = new VBox(5);
+        Label dateLabel = new Label(appt.getDateTime().format(dateTimeFormatter));
+        dateLabel.setFont(Font.font("Arial", FontWeight.BOLD, 13));
+        
+        Label reasonLabel = new Label(appt.getReason());
+        reasonLabel.setFont(Font.font("Arial", 12));
+        
+        Label providerLabel = new Label(provider != null ? provider.getName() : "Provider tidak diketahui");
+        providerLabel.setFont(Font.font("Arial", 11));
+        providerLabel.setTextFill(Color.web("#666"));
+        
+        content.getChildren().addAll(dateLabel, reasonLabel, providerLabel);
+        
+        card.getChildren().add(content);
+        return card;
+    }
+    
+    private VBox createDetailedAppointmentCard(Appointment appt) {
+        VBox card = new VBox(12);
+        card.setPadding(new Insets(20));
+        card.setStyle("-fx-background-color: #f8f9fa; -fx-background-radius: 10; -fx-border-color: #dee2e6; -fx-border-radius: 10; -fx-border-width: 1;");
+        card.setMaxWidth(800);
+        
+        Provider provider = providerRepo.findById(appt.getProviderId()).orElse(null);
+        
+        HBox headerBox = new HBox();
+        Label idLabel = new Label("ID: " + appt.getId().substring(0, 8) + "...");
+        idLabel.setFont(Font.font("Arial", 11));
+        idLabel.setTextFill(Color.web("#999"));
+        
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        
+        Label statusLabel = new Label("DIJADWALKAN");
+        statusLabel.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-padding: 3 10; -fx-background-radius: 3; -fx-font-size: 10;");
+        
+        headerBox.getChildren().addAll(idLabel, spacer, statusLabel);
+        
+        Label dateLabel = new Label("📅 " + appt.getDateTime().format(dateTimeFormatter));
+        dateLabel.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+        
+        Label reasonLabel = new Label("Alasan: " + appt.getReason());
+        reasonLabel.setFont(Font.font("Arial", 13));
+        
+        Label providerLabel = new Label("🏥 " + (provider != null ? provider.getName() + " - " + provider.getAddress() : "Provider tidak diketahui"));
+        providerLabel.setFont(Font.font("Arial", 12));
+        providerLabel.setTextFill(Color.web("#666"));
+        
+        card.getChildren().addAll(headerBox, dateLabel, reasonLabel, providerLabel);
+        return card;
+    }
+    
+    private VBox createPolicyInfoCard(Policy policy) {
+        VBox card = new VBox(12);
+        card.setPadding(new Insets(20));
+        card.setStyle("-fx-background-color: #e8f5e9; -fx-background-radius: 10;");
+        card.setMaxWidth(800);
+        
+        Label titleLabel = new Label("Informasi Polis");
+        titleLabel.setFont(Font.font("Arial", FontWeight.BOLD, 16));
+        
+        Label numberLabel = new Label("Nomor Polis: " + policy.getPolicyNumber());
+        Label statusLabel = new Label("Status: " + policy.getStatus());
+        Label claimsLabel = new Label("Total Klaim: " + policy.getClaims().size());
+        
+        card.getChildren().addAll(titleLabel, numberLabel, statusLabel, claimsLabel);
+        return card;
+    }
+    
+    private VBox createClaimCard(Claim claim) {
+        VBox card = new VBox(12);
+        card.setPadding(new Insets(20));
+        card.setStyle("-fx-background-color: #f8f9fa; -fx-background-radius: 10; -fx-border-color: #dee2e6; -fx-border-radius: 10; -fx-border-width: 1;");
+        card.setMaxWidth(800);
+        
+        Provider provider = providerRepo.findById(claim.getProviderId()).orElse(null);
+        
+        HBox headerBox = new HBox();
+        Label idLabel = new Label("Klaim ID: " + claim.getId().substring(0, 8) + "...");
+        idLabel.setFont(Font.font("Arial", 11));
+        idLabel.setTextFill(Color.web("#999"));
+        
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        
+        String statusColor = getClaimStatusColor(claim.getState());
+        Label statusLabel = new Label(claim.getState().toString());
+        statusLabel.setStyle("-fx-background-color: " + statusColor + "; -fx-text-fill: white; -fx-padding: 3 10; -fx-background-radius: 3; -fx-font-size: 10;");
+        
+        headerBox.getChildren().addAll(idLabel, spacer, statusLabel);
+        
+        Label amountLabel = new Label("💰 Rp " + String.format("%,.0f", claim.getAmount()));
+        amountLabel.setFont(Font.font("Arial", FontWeight.BOLD, 16));
+        
+        Label descLabel = new Label("Deskripsi: " + claim.getDescription());
+        descLabel.setFont(Font.font("Arial", 13));
+        
+        Label dateLabel = new Label("Tanggal: " + claim.getDate().format(dateFormatter));
+        dateLabel.setFont(Font.font("Arial", 12));
+        dateLabel.setTextFill(Color.web("#666"));
+        
+        Label providerLabel = new Label("🏥 " + (provider != null ? provider.getName() : "Provider tidak diketahui"));
+        providerLabel.setFont(Font.font("Arial", 12));
+        providerLabel.setTextFill(Color.web("#666"));
+        
+        card.getChildren().addAll(headerBox, amountLabel, descLabel, dateLabel, providerLabel);
+        return card;
+    }
+    
+    private String getClaimStatusColor(Claim.State state) {
+        switch (state) {
+            case APPROVED: return "#2ecc71";
+            case REJECTED: return "#e74c3c";
+            case UNDER_REVIEW: return "#f39c12";
+            case PAID: return "#9b59b6";
+            default: return "#95a5a6";
+        }
+    }
+    
+    private HBox createNewsCard(NewsArticle article) {
+        HBox card = new HBox(15);
+        card.setPadding(new Insets(15));
+        card.setStyle("-fx-background-color: #f8f9fa; -fx-background-radius: 8;");
+        card.setMaxWidth(700);
+        
+        VBox content = new VBox(5);
+        Label titleLabel = new Label(article.getTitle());
+        titleLabel.setFont(Font.font("Arial", FontWeight.SEMI_BOLD, 13));
+        titleLabel.setWrapText(true);
+        
+        Label sourceLabel = new Label(article.getSource() + " • " + article.getPublishedAt().format(dateTimeFormatter));
+        sourceLabel.setFont(Font.font("Arial", 11));
+        sourceLabel.setTextFill(Color.web("#999"));
+        
+        content.getChildren().addAll(titleLabel, sourceLabel);
+        card.getChildren().add(content);
+        return card;
+    }
+    
+    private VBox createDetailedNewsCard(NewsArticle article) {
+        VBox card = new VBox(12);
+        card.setPadding(new Insets(20));
+        card.setStyle("-fx-background-color: #f8f9fa; -fx-background-radius: 10; -fx-border-color: #dee2e6; -fx-border-radius: 10; -fx-border-width: 1;");
+        card.setMaxWidth(800);
+        
+        Label titleLabel = new Label(article.getTitle());
+        titleLabel.setFont(Font.font("Arial", FontWeight.BOLD, 15));
+        titleLabel.setWrapText(true);
+        
+        Label summaryLabel = new Label(article.getSummary());
+        summaryLabel.setFont(Font.font("Arial", 13));
+        summaryLabel.setWrapText(true);
+        summaryLabel.setTextFill(Color.web("#555"));
+        
+        HBox metaBox = new HBox(15);
+        Label sourceLabel = new Label("📰 " + article.getSource());
+        sourceLabel.setFont(Font.font("Arial", 11));
+        sourceLabel.setTextFill(Color.web("#666"));
+        
+        Label dateLabel = new Label("🕒 " + article.getPublishedAt().format(dateTimeFormatter));
+        dateLabel.setFont(Font.font("Arial", 11));
+        dateLabel.setTextFill(Color.web("#666"));
+        
+        metaBox.getChildren().addAll(sourceLabel, dateLabel);
+        
+        Button linkBtn = new Button("Baca Selengkapnya");
+        linkBtn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-size: 11; -fx-padding: 5 15; -fx-background-radius: 5;");
+        linkBtn.setOnAction(e -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Link Artikel");
+            alert.setHeaderText(article.getTitle());
+            alert.setContentText("URL: " + article.getUrl());
+            alert.showAndWait();
+        });
+        
+        card.getChildren().addAll(titleLabel, summaryLabel, metaBox, linkBtn);
+        return card;
+    }
+    
+    private void showNewAppointmentDialog() {
+        Dialog<Appointment> dialog = new Dialog<>();
+        dialog.setTitle("Buat Janji Temu Baru");
+        dialog.setHeaderText("Isi informasi janji temu");
+        
+        ButtonType createButtonType = new ButtonType("Buat", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(createButtonType, ButtonType.CANCEL);
+        
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+        
+        ComboBox<Provider> providerCombo = new ComboBox<>();
+        providerCombo.getItems().addAll(providerRepo.findAll());
+        providerCombo.setPromptText("Pilih Provider");
+        
+        DatePicker datePicker = new DatePicker();
+        datePicker.setValue(LocalDate.now().plusDays(1));
+        
+        TextField timeField = new TextField("09:00");
+        TextField reasonField = new TextField();
+        reasonField.setPromptText("Alasan kunjungan");
+        
+        grid.add(new Label("Provider:"), 0, 0);
+        grid.add(providerCombo, 1, 0);
+        grid.add(new Label("Tanggal:"), 0, 1);
+        grid.add(datePicker, 1, 1);
+        grid.add(new Label("Waktu (HH:mm):"), 0, 2);
+        grid.add(timeField, 1, 2);
+        grid.add(new Label("Alasan:"), 0, 3);
+        grid.add(reasonField, 1, 3);
+        
+        dialog.getDialogPane().setContent(grid);
+        
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == createButtonType) {
+                try {
+                    Provider selectedProvider = providerCombo.getValue();
+                    if (selectedProvider == null) {
+                        showError("Pilih provider terlebih dahulu");
+                        return null;
+                    }
+                    
+                    String[] timeParts = timeField.getText().split(":");
+                    int hour = Integer.parseInt(timeParts[0]);
+                    int minute = Integer.parseInt(timeParts[1]);
+                    
+                    LocalDateTime dateTime = datePicker.getValue().atTime(hour, minute);
+                    
+                    Appointment appt = new Appointment(
+                        currentPatient.getId(),
+                        selectedProvider.getId(),
+                        dateTime,
+                        reasonField.getText()
+                    );
+                    
+                    currentPatient.addAppointment(appt);
+                    patientRepo.save(currentPatient.getId(), currentPatient);
+                    
+                    return appt;
+                } catch (Exception e) {
+                    showError("Format waktu tidak valid. Gunakan HH:mm (contoh: 09:00)");
+                    return null;
+                }
+            }
+            return null;
+        });
+        
+        dialog.showAndWait().ifPresent(appt -> {
+            showAppointmentsScreen();
+            showSuccess("Janji temu berhasil dibuat!");
+        });
+    }
+    
+    private void showNewClaimDialog() {
+        Dialog<Claim> dialog = new Dialog<>();
+        dialog.setTitle("Ajukan Klaim Baru");
+        dialog.setHeaderText("Isi informasi klaim");
+        
+        ButtonType submitButtonType = new ButtonType("Ajukan", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(submitButtonType, ButtonType.CANCEL);
+        
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+        
+        ComboBox<Provider> providerCombo = new ComboBox<>();
+        providerCombo.getItems().addAll(providerRepo.findAll());
+        providerCombo.setPromptText("Pilih Provider");
+        
+        TextField amountField = new TextField();
+        amountField.setPromptText("Jumlah (Rp)");
+        
+        DatePicker datePicker = new DatePicker();
+        datePicker.setValue(LocalDate.now());
+        
+        TextArea descArea = new TextArea();
+        descArea.setPromptText("Deskripsi treatment");
+        descArea.setPrefRowCount(3);
+        
+        grid.add(new Label("Provider:"), 0, 0);
+        grid.add(providerCombo, 1, 0);
+        grid.add(new Label("Jumlah:"), 0, 1);
+        grid.add(amountField, 1, 1);
+        grid.add(new Label("Tanggal:"), 0, 2);
+        grid.add(datePicker, 1, 2);
+        grid.add(new Label("Deskripsi:"), 0, 3);
+        grid.add(descArea, 1, 3);
+        
+        dialog.getDialogPane().setContent(grid);
+        
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == submitButtonType) {
+                    Provider selectedProvider = providerCombo.getValue();
+                    if (selectedProvider == null) {
+                        showError("Pilih provider terlebih dahulu");
+                        return null;
+                    }
+                    
+                    double amount = Double.parseDouble(amountField.getText().replace(",", "").replace(".", ""));
+                    
+                    Claim claim = insuranceService.submitClaim(
+                        currentPatient.getId(),
+                        amount,
+                        datePicker.getValue(),
+                        selectedProvider.getId(),
+                        descArea.getText()
+                    );
+                    
+                    return claim;
+            }
+            return null;
+        });
+        
+        dialog.showAndWait().ifPresent(claim -> {
+            showClaimsScreen();
+            showSuccess("Klaim berhasil diajukan dengan ID: " + claim.getId().substring(0, 8) + "...");
+        });
+    }
+    
+    private void showError(String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Error");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+    
+    private void showSuccess(String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Sukses");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+    
+    public static void main(String[] args) {
+        launch(args);
+    }
+}
