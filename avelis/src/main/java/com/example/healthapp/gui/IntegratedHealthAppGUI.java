@@ -33,6 +33,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
+import javafx.scene.control.PasswordField;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
@@ -46,8 +47,7 @@ import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
 /**
- * Integrated Health Management System GUI
- * Beranda sebagai tab utama dengan font hitam
+ * Integrated Health Management System GUI dengan Login dan Dual Mode
  */
 public class IntegratedHealthAppGUI extends Application {
 
@@ -75,6 +75,17 @@ public class IntegratedHealthAppGUI extends Application {
     
     // Common UI controls
     private ComboBox<String> cbPatientBox, cbPoliBox, cbDokterBox;
+    private ComboBox<String> cbUserPoliBox, cbUserDokterBox; // Untuk user mode
+
+    // User management
+    private String currentUserRole = "admin"; // "admin" or "user"
+    private String currentUserId = "";
+    private Patient currentUserPatient = null; // Untuk user mode
+    
+    // Sample user credentials
+    private Map<String, String> userCredentials = new HashMap<>();
+    private Map<String, String> userRoles = new HashMap<>();
+    private Map<String, String> userToPatientMap = new HashMap<>(); // Mapping user ke patient
 
     // Constants
     private static final String PRIMARY_COLOR = "#009B88";
@@ -88,6 +99,29 @@ public class IntegratedHealthAppGUI extends Application {
     @Override
     public void init() {
         initializeSampleData();
+        initializeUserAccounts();
+    }
+
+    private void initializeUserAccounts() {
+        // Admin accounts
+        userCredentials.put("admin", "admin123");
+        userRoles.put("admin", "admin");
+        
+        userCredentials.put("staff", "staff123");
+        userRoles.put("staff", "admin");
+        
+        // Regular user accounts - mapping ke patient yang ada
+        userCredentials.put("budi", "budi123");
+        userRoles.put("budi", "user");
+        userToPatientMap.put("budi", "P001"); // Budi Santoso
+        
+        userCredentials.put("siti", "siti123");
+        userRoles.put("siti", "user");
+        userToPatientMap.put("siti", "P002"); // Siti Aminah
+        
+        userCredentials.put("user", "user123");
+        userRoles.put("user", "user");
+        userToPatientMap.put("user", "P003"); // Ahmad Wijaya
     }
 
     private void initializeSampleData() {
@@ -192,6 +226,120 @@ public class IntegratedHealthAppGUI extends Application {
 
     @Override
     public void start(Stage primaryStage) {
+        showLoginScreen(primaryStage);
+    }
+
+    private void showLoginScreen(Stage primaryStage) {
+        // Login Container
+        VBox loginContainer = new VBox(20);
+        loginContainer.setAlignment(Pos.CENTER);
+        loginContainer.setPadding(new Insets(40));
+        loginContainer.setStyle("-fx-background: linear-gradient(135deg, #1a5f4a, " + PRIMARY_COLOR + ");");
+
+        // Login Card
+        VBox loginCard = new VBox(25);
+        loginCard.setAlignment(Pos.CENTER);
+        loginCard.setPadding(new Insets(40, 50, 40, 50));
+        loginCard.setMaxWidth(400);
+        loginCard.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 20, 0, 0, 5);");
+
+        // Header
+        VBox headerBox = new VBox(10);
+        headerBox.setAlignment(Pos.CENTER);
+        
+        Label logo = new Label("⚕️");
+        logo.setFont(Font.font("Segoe UI", 36));
+        
+        Label title = new Label("Health Management System");
+        title.setFont(Font.font("Segoe UI", 24));
+        title.setStyle("-fx-text-fill: " + TEXT_BLACK + "; -fx-font-weight: bold;");
+        
+        Label subtitle = new Label("Silakan login untuk melanjutkan");
+        subtitle.setFont(Font.font("Segoe UI", 12));
+        subtitle.setStyle("-fx-text-fill: #666;");
+
+        headerBox.getChildren().addAll(logo, title, subtitle);
+
+        // Login Form
+        VBox formBox = new VBox(15);
+        formBox.setAlignment(Pos.CENTER);
+        
+        TextField usernameField = new TextField();
+        usernameField.setPromptText("Username");
+        usernameField.setMaxWidth(280);
+        usernameField.setStyle("-fx-padding: 12; -fx-font-size: 14;");
+        
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText("Password");
+        passwordField.setMaxWidth(280);
+        passwordField.setStyle("-fx-padding: 12; -fx-font-size: 14;");
+
+        // Login Button
+        Button loginButton = new Button("Login");
+        loginButton.setStyle("-fx-background-color: " + PRIMARY_COLOR + "; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14; -fx-padding: 12 40 12 40; -fx-background-radius: 6;");
+        loginButton.setMaxWidth(280);
+        
+        // Demo Accounts Info
+        VBox demoBox = new VBox(10);
+        demoBox.setAlignment(Pos.CENTER_LEFT);
+        demoBox.setStyle("-fx-background-color: #f8f9fa; -fx-padding: 15; -fx-background-radius: 6;");
+        
+        Label demoTitle = new Label("Akun Demo:");
+        demoTitle.setStyle("-fx-text-fill: " + TEXT_BLACK + "; -fx-font-weight: bold; -fx-font-size: 12;");
+        
+        Label adminInfo = new Label("Admin: admin / admin123");
+        adminInfo.setStyle("-fx-text-fill: " + TEXT_BLACK + "; -fx-font-size: 11;");
+        
+        Label userInfo = new Label("User: user / user123 (Ahmad Wijaya)");
+        userInfo.setStyle("-fx-text-fill: " + TEXT_BLACK + "; -fx-font-size: 11;");
+        
+        Label userInfo2 = new Label("User: budi / budi123 (Budi Santoso)");
+        userInfo2.setStyle("-fx-text-fill: " + TEXT_BLACK + "; -fx-font-size: 11;");
+        
+        demoBox.getChildren().addAll(demoTitle, adminInfo, userInfo, userInfo2);
+
+        formBox.getChildren().addAll(usernameField, passwordField, loginButton, demoBox);
+
+        // Add everything to login card
+        loginCard.getChildren().addAll(headerBox, formBox);
+        loginContainer.getChildren().add(loginCard);
+
+        // Login button action
+        loginButton.setOnAction(e -> {
+            String username = usernameField.getText().trim();
+            String password = passwordField.getText().trim();
+            
+            if (authenticateUser(username, password)) {
+                currentUserId = username;
+                currentUserRole = userRoles.get(username);
+                
+                // Set current user patient untuk user mode
+                if (currentUserRole.equals("user") && userToPatientMap.containsKey(username)) {
+                    String patientId = userToPatientMap.get(username);
+                    currentUserPatient = patientRepo.findById(patientId).orElse(null);
+                }
+                
+                setupMainApplication(primaryStage);
+            } else {
+                showAlert("Login Gagal", "Username atau password salah!");
+            }
+        });
+
+        // Enter key support
+        passwordField.setOnAction(e -> loginButton.fire());
+
+        Scene loginScene = new Scene(loginContainer, 900, 700);
+        primaryStage.setScene(loginScene);
+        primaryStage.setTitle("Health Management System - Login");
+        primaryStage.show();
+    }
+
+    private boolean authenticateUser(String username, String password) {
+        return userCredentials.containsKey(username) && 
+               userCredentials.get(username).equals(password);
+    }
+
+    private void setupMainApplication(Stage primaryStage) {
         setupPrimaryStage(primaryStage);
         setupTabSystem();
         setupMainScene(primaryStage);
@@ -199,7 +347,9 @@ public class IntegratedHealthAppGUI extends Application {
     }
 
     private void setupPrimaryStage(Stage stage) {
-        stage.setTitle("Integrated Health Management System v2.0");
+        stage.setTitle("Integrated Health Management System v2.0 - " + 
+                      (currentUserRole.equals("admin") ? "Admin Mode" : "User Mode") + 
+                      " (User: " + currentUserId + ")");
         stage.setWidth(1600);
         stage.setHeight(900);
     }
@@ -208,17 +358,26 @@ public class IntegratedHealthAppGUI extends Application {
         tabPane = new TabPane();
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
-        // Create all tabs - BERANDA sebagai tab utama
-        Tab[] tabs = {
-            createBerandaTab(),           // Tab utama menggantikan Dashboard
-            createInformasiTab(),
-            createDaftarAntarianTab(),
-            createPatientsTab(),
-            createPoliDokterTab(),
-            createAppointmentsTab(),
-            createHealthInsuranceTab(),
-            createNewsTab()
-        };
+        // Create tabs based on user role
+        List<Tab> tabs = new ArrayList<>();
+        
+        // Common tabs for all users
+        tabs.add(createBerandaTab());
+        tabs.add(createInformasiTab());
+        tabs.add(createDaftarAntarianTab());
+        
+        // Admin-only tabs
+        if (currentUserRole.equals("admin")) {
+            tabs.add(createPatientsTab());
+            tabs.add(createPoliDokterTab());
+            tabs.add(createAppointmentsTab());
+            tabs.add(createHealthInsuranceTab());
+        } else {
+            // User-specific tabs
+            tabs.add(createBuatJanjiTab()); // Tab khusus user untuk buat janji
+        }
+        
+        tabs.add(createNewsTab());
 
         tabPane.getTabs().addAll(tabs);
         setupTabMapping();
@@ -227,7 +386,7 @@ public class IntegratedHealthAppGUI extends Application {
     private void setupTabMapping() {
         // Map action names to corresponding tabs
         String[][] tabMappings = {
-            {"📋 Buat Janji Temu", "Appointments"},
+            {"📋 Buat Janji Temu", "Buat Janji"},
             {"👤 Daftar Pasien Baru", "Patients"},
             {"💳 Proses Klaim Asuransi", "Health Insurance"},
             {"📊 Lihat Laporan", "🏠 Beranda"},
@@ -242,7 +401,10 @@ public class IntegratedHealthAppGUI extends Application {
         };
 
         for (String[] mapping : tabMappings) {
-            tabMap.put(mapping[0], findTabByTitle(mapping[1]));
+            Tab foundTab = findTabByTitle(mapping[1]);
+            if (foundTab != null) {
+                tabMap.put(mapping[0], foundTab);
+            }
         }
     }
 
@@ -288,7 +450,11 @@ public class IntegratedHealthAppGUI extends Application {
         mainTitle.setFont(Font.font("Segoe UI", 16));
         mainTitle.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
         
-        Label subtitle = new Label("Professional Healthcare Administration Platform");
+        String userInfo = currentUserRole.equals("admin") ? 
+            "Admin Mode | User: " + currentUserId :
+            "User Mode | Pasien: " + (currentUserPatient != null ? currentUserPatient.getName() : currentUserId);
+            
+        Label subtitle = new Label("Professional Healthcare Administration Platform - " + userInfo);
         subtitle.setFont(Font.font("Segoe UI", 10));
         subtitle.setStyle("-fx-text-fill: #e0f2f1;");
         
@@ -303,11 +469,11 @@ public class IntegratedHealthAppGUI extends Application {
         Label status = new Label("✓ System Status: Online");
         status.setStyle("-fx-text-fill: #4CAF50; -fx-font-weight: bold; -fx-font-size: 11;");
         
-        Label time = new Label(LocalDateTime.now().format(
-            DateTimeFormatter.ofPattern("dd MMM yyyy | HH:mm")));
-        time.setStyle("-fx-text-fill: #e0f2f1; -fx-font-size: 11;");
+        Button logoutBtn = new Button("Logout");
+        logoutBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-border-color: white; -fx-border-width: 1; -fx-border-radius: 4; -fx-padding: 4 12 4 12;");
+        logoutBtn.setOnAction(e -> showLoginScreen((Stage) tabPane.getScene().getWindow()));
         
-        statusBox.getChildren().addAll(status, time);
+        statusBox.getChildren().addAll(status, logoutBtn);
         titleBox.getChildren().addAll(logo, titleSection, spacer, statusBox);
         header.getChildren().add(titleBox);
         
@@ -378,10 +544,14 @@ public class IntegratedHealthAppGUI extends Application {
         vbox.setStyle("-fx-background-color: " + BACKGROUND_COLOR + ";");
         
         // Welcome Section
-        VBox welcomeSection = createGradientPanel("Selamat Datang di Sistem Manajemen Kesehatan", 
-            "Platform terintegrasi untuk mengelola pasien, janji temu, asuransi, dan informasi kesehatan dengan mudah dan efisien.");
+        VBox welcomeSection = createGradientPanel(
+            "Selamat Datang di Sistem Manajemen Kesehatan", 
+            currentUserRole.equals("admin") ? 
+            "Platform terintegrasi untuk mengelola pasien, janji temu, asuransi, dan informasi kesehatan dengan mudah dan efisien." :
+            "Platform kesehatan untuk melihat informasi, janji temu, dan mengelola kebutuhan kesehatan Anda."
+        );
         
-        // Quick Actions - TANPA RINGKASAN SISTEM
+        // Quick Actions - Different for admin vs user
         VBox quickActionsSection = new VBox(15);
         quickActionsSection.setPadding(new Insets(20));
         quickActionsSection.setStyle(
@@ -398,10 +568,18 @@ public class IntegratedHealthAppGUI extends Application {
         
         HBox quickActionsGrid = new HBox(15);
         
-        String[] quickActions = {
-            "📋 Buat Janji Temu", "👤 Daftar Pasien Baru", "💳 Proses Klaim Asuransi",
-            "📊 Lihat Laporan", "🩺 Lihat Riwayat Medis", "⚙️ Pengaturan Sistem"
-        };
+        String[] quickActions;
+        if (currentUserRole.equals("admin")) {
+            quickActions = new String[]{
+                "📋 Buat Janji Temu", "👤 Daftar Pasien Baru", "💳 Proses Klaim Asuransi",
+                "📊 Lihat Laporan", "🩺 Lihat Riwayat Medis", "⚙️ Pengaturan Sistem"
+            };
+        } else {
+            quickActions = new String[]{
+                "📋 Buat Janji Temu", "🩺 Lihat Riwayat Medis", "💳 Ajukan Klaim",
+                "📊 Lihat Jadwal", "ℹ️ Informasi Kesehatan", "👤 Profil Saya"
+            };
+        }
         
         for (String action : quickActions) {
             quickActionsGrid.getChildren().add(createActionButton(action, action));
@@ -413,14 +591,23 @@ public class IntegratedHealthAppGUI extends Application {
         
         quickActionsSection.getChildren().addAll(quickTitle, quickScroll);
         
-        // System Info
+        // System Info - Different for admin vs user
         HBox sysInfoRow = new HBox(15);
-        sysInfoRow.getChildren().addAll(
-            createInfoCard("👥 Pasien Terdaftar", patientRepo.findAll().size() + " pasien terdaftar"),
-            createInfoCard("✓ Asuransi Aktif", getEnrolledPatientCount() + " pasien terdaftar asuransi"),
-            createInfoCard("📅 Janji Hari Ini", getTodayAppointmentsCount() + " janji temu"),
-            createInfoCard("🩺 Dokter Tersedia", dokterRepo.findAll().size() + " dokter aktif")
-        );
+        if (currentUserRole.equals("admin")) {
+            sysInfoRow.getChildren().addAll(
+                createInfoCard("👥 Pasien Terdaftar", patientRepo.findAll().size() + " pasien terdaftar"),
+                createInfoCard("✓ Asuransi Aktif", getEnrolledPatientCount() + " pasien terdaftar asuransi"),
+                createInfoCard("📅 Janji Hari Ini", getTodayAppointmentsCount() + " janji temu"),
+                createInfoCard("🩺 Dokter Tersedia", dokterRepo.findAll().size() + " dokter aktif")
+            );
+        } else {
+            sysInfoRow.getChildren().addAll(
+                createInfoCard("📅 Janji Saya", getMyAppointmentsCount() + " janji aktif"),
+                createInfoCard("💳 Klaim Saya", getMyClaimsCount() + " klaim diajukan"),
+                createInfoCard("🩺 Dokter Tersedia", dokterRepo.findAll().size() + " dokter siap melayani"),
+                createInfoCard("📞 Bantuan", "Hubungi 1500-123 untuk bantuan")
+            );
+        }
         
         // Recent Activities
         VBox activitiesSection = new VBox(15);
@@ -432,19 +619,41 @@ public class IntegratedHealthAppGUI extends Application {
             "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 5, 0, 0, 2);"
         );
         
-        Label activitiesTitle = new Label("📈 Aktivitas Terkini");
+        Label activitiesTitle = new Label(currentUserRole.equals("admin") ? "📈 Aktivitas Terkini" : "📈 Aktivitas Saya");
         activitiesTitle.setFont(SUBTITLE_FONT);
         activitiesTitle.setStyle("-fx-text-fill: " + TEXT_BLACK + "; -fx-font-weight: bold;");
         
         ListView<String> activitiesList = new ListView<>();
         activitiesList.setPrefHeight(150);
         activitiesList.setStyle("-fx-control-inner-background: white; -fx-border-color: #e0e0e0; -fx-text-fill: " + TEXT_BLACK + ";");
-        activitiesList.getItems().addAll(
-            "✓ Pasien Budi Santoso mendaftar asuransi tier PREMIUM - " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " 10:30",
-            "✓ Klaim dari Siti Aminah disetujui - Total: Rp 100,000 - " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " 09:15",
-            "✓ Dr. Dewi Lestari menambahkan jadwal konsultasi baru - " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " 08:45",
-            "✓ 3 pasien sudah check-in untuk antrian hari ini - " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " 08:20"
-        );
+        
+        if (currentUserRole.equals("admin")) {
+            activitiesList.getItems().addAll(
+                "✓ Pasien Budi Santoso mendaftar asuransi tier PREMIUM - " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " 10:30",
+                "✓ Klaim dari Siti Aminah disetujui - Total: Rp 100,000 - " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " 09:15",
+                "✓ Dr. Dewi Lestari menambahkan jadwal konsultasi baru - " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " 08:45",
+                "✓ 3 pasien sudah check-in untuk antrian hari ini - " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " 08:20"
+            );
+        } else {
+            // Activities for user
+            List<String> userActivities = new ArrayList<>();
+            userActivities.add("✓ Janji temu dengan Dr. Dewi Lestari - " + LocalDate.now().plusDays(1).format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " 09:00");
+            userActivities.add("✓ Klaim asuransi dalam proses review - Rp 150,000 - " + LocalDate.now().minusDays(2).format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+            
+            if (currentUserPatient != null) {
+                for (Appointment appt : currentUserPatient.getAppointments()) {
+                    Dokter dokter = dokterRepo.findById(appt.getDoctorId()).orElse(null);
+                    if (dokter != null) {
+                        userActivities.add("✓ Janji dengan " + dokter.getName() + " - " + 
+                            appt.getDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+                    }
+                }
+            }
+            
+            userActivities.add("✓ Pembaruan profil berhasil - " + LocalDate.now().minusDays(5).format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+            
+            activitiesList.getItems().addAll(userActivities);
+        }
         
         activitiesSection.getChildren().addAll(activitiesTitle, activitiesList);
         
@@ -488,12 +697,146 @@ public class IntegratedHealthAppGUI extends Application {
         infoList.getItems().addAll(
             "[TERBARU] 🩺 Panduan Kesehatan Umum - Kesehatan yang baik adalah investasi terbaik | " + LocalDate.now().minusDays(2) + " | Sumber: Kemenkes",
             "[FEATURED] 💊 Penggunaan Obat Yang Aman - Pelajari cara menggunakan obat dengan benar | " + LocalDate.now().minusDays(4) + " | Sumber: WHO",
-            "🥗 Nutrisi Seimbang - Tips makanan sehat untuk gaya hidup lebih baik | " + LocalDate.now().minusDays(6) + " | Sumber: Ahli Gizi"
+            "🥗 Nutrisi Seimbang - Tips makanan sehat untuk gaya hidup lebih baik | " + LocalDate.now().minusDays(6) + " | Sumber: Ahli Gizi",
+            "🏃‍♂️ Olahraga Rutin - Manfaat dan panduan olahraga untuk pemula | " + LocalDate.now().minusDays(8) + " | Sumber: Dokter Spesialis",
+            "😴 Pentingnya Tidur Berkualitas - Dampak tidur terhadap kesehatan | " + LocalDate.now().minusDays(10) + " | Sumber: Penelitian Kesehatan"
         );
         
         contentSection.getChildren().addAll(searchBox, infoList);
         vbox.getChildren().addAll(headerSection, contentSection);
         tab.setContent(vbox);
+        return tab;
+    }
+
+    // TAB BARU: Buat Janji untuk User
+    private Tab createBuatJanjiTab() {
+        Tab tab = new Tab("📋 Buat Janji");
+        tab.setClosable(false);
+        
+        VBox vbox = new VBox(20);
+        vbox.setPadding(new Insets(20));
+        vbox.setStyle("-fx-background-color: " + BACKGROUND_COLOR + ";");
+        
+        // Header
+        VBox headerSection = createGradientPanel("Buat Janji Temu Baru", 
+            "Pilih dokter dan jadwal untuk konsultasi kesehatan Anda");
+        
+        // Form Buat Janji
+        VBox formSection = new VBox(15);
+        formSection.setPadding(new Insets(25));
+        formSection.setStyle(
+            "-fx-background-color: white; " +
+            "-fx-border-color: #e0e0e0; " +
+            "-fx-border-radius: 8; " +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 4, 0, 0, 1);"
+        );
+        
+        Label formTitle = new Label("Formulir Janji Temu");
+        formTitle.setFont(SUBTITLE_FONT);
+        formTitle.setStyle("-fx-text-fill: " + TEXT_BLACK + "; -fx-font-weight: bold;");
+        
+        // Patient Info (read-only untuk user)
+        HBox patientInfoBox = new HBox(10);
+        patientInfoBox.setStyle("-fx-background-color: #f8f9fa; -fx-padding: 15; -fx-border-radius: 6;");
+        
+        Label patientLabel = new Label("Pasien:");
+        patientLabel.setStyle("-fx-text-fill: " + TEXT_BLACK + "; -fx-font-weight: bold;");
+        
+        Label patientName = new Label(currentUserPatient != null ? 
+            currentUserPatient.getName() + " (" + currentUserPatient.getId() + ")" : "Tidak terdeteksi");
+        patientName.setStyle("-fx-text-fill: " + TEXT_BLACK + ";");
+        
+        patientInfoBox.getChildren().addAll(patientLabel, patientName);
+        
+        // Form fields
+        VBox fieldsBox = new VBox(10);
+        
+        // Poli Selection
+        HBox poliBox = new HBox(10);
+        Label poliLabel = new Label("Poli:");
+        poliLabel.setMinWidth(100);
+        cbUserPoliBox = createComboBox("Pilih Poli");
+        cbUserPoliBox.setPrefWidth(300);
+        refreshUserPoliComboBox();
+        poliBox.getChildren().addAll(poliLabel, cbUserPoliBox);
+        
+        // Doctor Selection
+        HBox dokterBox = new HBox(10);
+        Label dokterLabel = new Label("Dokter:");
+        dokterLabel.setMinWidth(100);
+        cbUserDokterBox = createComboBox("Pilih Dokter");
+        cbUserDokterBox.setPrefWidth(300);
+        dokterBox.getChildren().addAll(dokterLabel, cbUserDokterBox);
+        
+        // Date Selection
+        HBox dateBox = new HBox(10);
+        Label dateLabel = new Label("Tanggal:");
+        dateLabel.setMinWidth(100);
+        DatePicker userDatePicker = new DatePicker();
+        userDatePicker.setPrefWidth(300);
+        userDatePicker.setValue(LocalDate.now().plusDays(1)); // Default besok
+        dateBox.getChildren().addAll(dateLabel, userDatePicker);
+        
+        // Time Selection
+        HBox timeBox = new HBox(10);
+        Label timeLabel = new Label("Waktu:");
+        timeLabel.setMinWidth(100);
+        ComboBox<String> timeComboBox = createComboBox("Pilih Waktu");
+        timeComboBox.setPrefWidth(300);
+        // Tambahkan pilihan waktu
+        String[] availableTimes = {"08:00", "09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00"};
+        timeComboBox.getItems().addAll(availableTimes);
+        timeComboBox.setValue("09:00");
+        timeBox.getChildren().addAll(timeLabel, timeComboBox);
+        
+        // Reason
+        HBox reasonBox = new HBox(10);
+        Label reasonLabel = new Label("Keluhan:");
+        reasonLabel.setMinWidth(100);
+        TextField reasonField = createTextField("Jelaskan keluhan atau alasan konsultasi");
+        reasonField.setPrefWidth(300);
+        reasonBox.getChildren().addAll(reasonLabel, reasonField);
+        
+        // Submit Button
+        Button submitButton = createPrimaryButton("Buat Janji Temu");
+        submitButton.setStyle("-fx-background-color: " + PRIMARY_COLOR + "; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 12 30 12 30;");
+        submitButton.setOnAction(e -> makeUserAppointment(userDatePicker, timeComboBox, reasonField));
+        
+        // Setup combo box interaction
+        setupUserAppointmentComboBoxes();
+        
+        fieldsBox.getChildren().addAll(poliBox, dokterBox, dateBox, timeBox, reasonBox, submitButton);
+        formSection.getChildren().addAll(formTitle, patientInfoBox, fieldsBox);
+        
+        // Janji Saya Section
+        VBox myAppointmentsSection = new VBox(15);
+        myAppointmentsSection.setPadding(new Insets(25));
+        myAppointmentsSection.setStyle(
+            "-fx-background-color: white; " +
+            "-fx-border-color: #e0e0e0; " +
+            "-fx-border-radius: 8; " +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 4, 0, 0, 1);"
+        );
+        
+        Label myAppointmentsTitle = new Label("📅 Janji Temu Saya");
+        myAppointmentsTitle.setFont(SUBTITLE_FONT);
+        myAppointmentsTitle.setStyle("-fx-text-fill: " + TEXT_BLACK + "; -fx-font-weight: bold;");
+        
+        ListView<String> userAppointmentsList = createStyledListView(200);
+        refreshUserAppointments(userAppointmentsList);
+        
+        Button refreshButton = createPrimaryButton("🔄 Refresh");
+        refreshButton.setOnAction(e -> refreshUserAppointments(userAppointmentsList));
+        
+        myAppointmentsSection.getChildren().addAll(myAppointmentsTitle, userAppointmentsList, refreshButton);
+        
+        vbox.getChildren().addAll(headerSection, formSection, myAppointmentsSection);
+        
+        ScrollPane scrollPane = new ScrollPane(vbox);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background-color: " + BACKGROUND_COLOR + ";");
+        
+        tab.setContent(scrollPane);
         return tab;
     }
 
@@ -510,7 +853,8 @@ public class IntegratedHealthAppGUI extends Application {
         headerSection.setPadding(new Insets(25, 20, 20, 20));
         headerSection.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;");
         
-        Label headerTitle = new Label("📋 Daftar Antrian dan Konsultasi Saya");
+        Label headerTitle = new Label(currentUserRole.equals("admin") ? 
+            "📋 Daftar Antrian dan Konsultasi" : "📋 Antrian dan Janji Temu Saya");
         headerTitle.setFont(TITLE_FONT);
         headerTitle.setStyle("-fx-text-fill: " + TEXT_BLACK + "; -fx-font-weight: bold;");
         
@@ -523,7 +867,10 @@ public class IntegratedHealthAppGUI extends Application {
         contentSection.setPadding(new Insets(20));
         
         // Info bar
-        HBox infoBar = createInfoBar("⏰ Total Antrian: " + appointmentRepo.findAll().size() + " | Waktu Tunggu Rata-rata: 15 menit");
+        String infoText = currentUserRole.equals("admin") ? 
+            "⏰ Total Antrian: " + appointmentRepo.findAll().size() + " | Waktu Tunggu Rata-rata: 15 menit" :
+            "⏰ Janji Aktif: " + getMyAppointmentsCount() + " | Status Terkini: Dalam Antrian";
+        HBox infoBar = createInfoBar(infoText);
         
         // Queue list
         ListView<String> queueList = createStyledListView(400);
@@ -531,13 +878,23 @@ public class IntegratedHealthAppGUI extends Application {
         
         // Action buttons
         HBox buttonBar = new HBox(10);
-        Button btnCheckIn = createPrimaryButton("✓ Check In Sekarang");
-        Button btnRefresh = createPrimaryButton("🔄 Refresh Antrian");
-        
-        btnCheckIn.setOnAction(e -> handleCheckIn(queueList));
-        btnRefresh.setOnAction(e -> refreshQueueDisplay(queueList));
-        
-        buttonBar.getChildren().addAll(btnCheckIn, btnRefresh);
+        if (currentUserRole.equals("admin")) {
+            Button btnCheckIn = createPrimaryButton("✓ Check In Pasien");
+            Button btnRefresh = createPrimaryButton("🔄 Refresh Antrian");
+            
+            btnCheckIn.setOnAction(e -> handleCheckIn(queueList));
+            btnRefresh.setOnAction(e -> refreshQueueDisplay(queueList));
+            
+            buttonBar.getChildren().addAll(btnCheckIn, btnRefresh);
+        } else {
+            Button btnBuatJanji = createPrimaryButton("📅 Buat Janji Baru");
+            Button btnRefresh = createPrimaryButton("🔄 Refresh Status");
+            
+            btnBuatJanji.setOnAction(e -> navigateToTab("📋 Buat Janji Temu"));
+            btnRefresh.setOnAction(e -> refreshQueueDisplay(queueList));
+            
+            buttonBar.getChildren().addAll(btnBuatJanji, btnRefresh);
+        }
         
         contentSection.getChildren().addAll(infoBar, queueList, buttonBar);
         vbox.getChildren().addAll(headerSection, contentSection);
@@ -546,6 +903,10 @@ public class IntegratedHealthAppGUI extends Application {
     }
 
     private Tab createPatientsTab() {
+        if (!currentUserRole.equals("admin")) {
+            return createAccessDeniedTab();
+        }
+        
         Tab tab = new Tab("Patients");
         tab.setClosable(false);
         
@@ -569,6 +930,10 @@ public class IntegratedHealthAppGUI extends Application {
     }
 
     private Tab createPoliDokterTab() {
+        if (!currentUserRole.equals("admin")) {
+            return createAccessDeniedTab();
+        }
+
         Tab tab = new Tab("Poli & Dokter");
         tab.setClosable(false);
 
@@ -593,6 +958,10 @@ public class IntegratedHealthAppGUI extends Application {
     }
 
     private Tab createAppointmentsTab() {
+        if (!currentUserRole.equals("admin")) {
+            return createAccessDeniedTab();
+        }
+
         Tab tab = new Tab("Appointments");
         tab.setClosable(false);
 
@@ -615,6 +984,10 @@ public class IntegratedHealthAppGUI extends Application {
     }
 
     private Tab createHealthInsuranceTab() {
+        if (!currentUserRole.equals("admin")) {
+            return createAccessDeniedTab();
+        }
+
         Tab tab = new Tab("Health Insurance");
         tab.setClosable(false);
 
@@ -690,6 +1063,30 @@ public class IntegratedHealthAppGUI extends Application {
         btnRefresh.setOnAction(e -> refreshNews());
 
         vbox.getChildren().addAll(title, newsListView, btnRefresh);
+        tab.setContent(vbox);
+        return tab;
+    }
+
+    private Tab createAccessDeniedTab() {
+        Tab tab = new Tab("Access Denied");
+        tab.setClosable(false);
+        
+        VBox vbox = new VBox(20);
+        vbox.setAlignment(Pos.CENTER);
+        vbox.setPadding(new Insets(50));
+        
+        Label icon = new Label("🚫");
+        icon.setFont(Font.font(48));
+        
+        Label title = new Label("Akses Ditolak");
+        title.setFont(Font.font("Segoe UI", 24));
+        title.setStyle("-fx-text-fill: " + TEXT_BLACK + "; -fx-font-weight: bold;");
+        
+        Label message = new Label("Anda tidak memiliki izin untuk mengakses fitur ini.\nFitur ini hanya tersedia untuk administrator.");
+        message.setStyle("-fx-text-fill: " + TEXT_BLACK + "; -fx-text-alignment: center;");
+        message.setAlignment(Pos.CENTER);
+        
+        vbox.getChildren().addAll(icon, title, message);
         tab.setContent(vbox);
         return tab;
     }
@@ -787,30 +1184,178 @@ public class IntegratedHealthAppGUI extends Application {
         return form;
     }
 
+    // ===== METHOD BARU UNTUK USER APPOINTMENT =====
+    private void refreshUserPoliComboBox() {
+        if (cbUserPoliBox != null) {
+            cbUserPoliBox.getItems().clear();
+            for (Poli poli : poliRepo.findAll()) {
+                cbUserPoliBox.getItems().add(poli.getId() + " - " + poli.getName());
+            }
+        }
+    }
+
+    private void setupUserAppointmentComboBoxes() {
+        cbUserPoliBox.setOnAction(ev -> {
+            String sel = cbUserPoliBox.getValue();
+            cbUserDokterBox.getItems().clear();
+            if (sel != null) {
+                String poliId = sel.split(" - ")[0];
+                for (Dokter dokter : dokterRepo.findAll()) {
+                    if (poliId.equals(dokter.getPoliId())) {
+                        cbUserDokterBox.getItems().add(dokter.getId() + " - " + dokter.getName());
+                    }
+                }
+            }
+        });
+    }
+
+    private void makeUserAppointment(DatePicker datePicker, ComboBox<String> timeComboBox, TextField reasonField) {
+        if (currentUserPatient == null) {
+            showAlert("Error", "Data pasien tidak ditemukan. Silakan login kembali.");
+            return;
+        }
+        
+        String poliSel = cbUserPoliBox.getValue();
+        String dokterSel = cbUserDokterBox.getValue();
+        LocalDate selectedDate = datePicker.getValue();
+        String timeStr = timeComboBox.getValue();
+        String reason = reasonField.getText().trim();
+        
+        if (poliSel == null || dokterSel == null || selectedDate == null || timeStr == null) {
+            showAlert("Validasi", "Poli, dokter, tanggal, dan waktu wajib diisi.");
+            return;
+        }
+        
+        if (reason.isEmpty()) {
+            showAlert("Validasi", "Silakan jelaskan keluhan atau alasan konsultasi.");
+            return;
+        }
+        
+        try {
+            LocalTime time = LocalTime.parse(timeStr);
+            LocalDateTime dateTime = LocalDateTime.of(selectedDate, time);
+            
+            // Cek apakah janji sudah ada di waktu yang sama
+            for (Appointment existing : appointmentRepo.findAll()) {
+                if (existing.getPatientId().equals(currentUserPatient.getId()) && 
+                    existing.getDateTime().equals(dateTime)) {
+                    showAlert("Peringatan", "Anda sudah memiliki janji pada waktu yang sama.");
+                    return;
+                }
+            }
+            
+            String dokterId = dokterSel.split(" - ")[0];
+            Appointment appt = new Appointment(currentUserPatient.getId(), dokterId, dateTime, reason);
+            
+            currentUserPatient.addAppointment(appt);
+            patientRepo.save(currentUserPatient.getId(), currentUserPatient);
+            appointmentRepo.save(appt.getId(), appt);
+            
+            showAlert("Berhasil", "Janji temu berhasil dibuat!\n" +
+                "Dokter: " + dokterSel.split(" - ")[1] + "\n" +
+                "Tanggal: " + dateTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) + "\n" +
+                "Kode: " + appt.getId());
+            
+            // Reset form
+            cbUserPoliBox.setValue(null);
+            cbUserDokterBox.setValue(null);
+            datePicker.setValue(LocalDate.now().plusDays(1));
+            timeComboBox.setValue("09:00");
+            reasonField.clear();
+            
+        } catch (Exception ex) {
+            showAlert("Error", "Terjadi kesalahan: " + ex.getMessage());
+        }
+    }
+
+    private void refreshUserAppointments(ListView<String> listView) {
+        listView.getItems().clear();
+        
+        if (currentUserPatient == null) {
+            listView.getItems().add("Data pasien tidak ditemukan");
+            return;
+        }
+        
+        List<Appointment> userAppointments = new ArrayList<>(currentUserPatient.getAppointments());
+        userAppointments.sort((a1, a2) -> a2.getDateTime().compareTo(a1.getDateTime())); // Urutkan terbaru dulu
+        
+        if (userAppointments.isEmpty()) {
+            listView.getItems().add("Belum ada janji temu");
+            return;
+        }
+        
+        for (Appointment appt : userAppointments) {
+            Dokter dokter = dokterRepo.findById(appt.getDoctorId()).orElse(null);
+            Poli poli = dokter != null ? poliRepo.findById(dokter.getPoliId()).orElse(null) : null;
+            
+            String dokterName = dokter != null ? dokter.getName() : "Unknown";
+            String poliName = poli != null ? poli.getName() : "Unknown";
+            String status = appt.isCheckedIn() ? "✅ HADIR" : "⏳ MENUNGGU";
+            
+            String line = String.format("%s | Dr. %s (%s) | %s | %s | %s", 
+                appt.getDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
+                dokterName, poliName, appt.getReason(), status, appt.getId());
+            listView.getItems().add(line);
+        }
+    }
+
     // ===== ACTION HANDLERS =====
     private void handleQuickAction(String action) {
         switch(action) {
             case "📋 Buat Janji Temu":
-                navigateToTab(action);
-                showAlert("Buat Janji Temu", "Silakan isi form untuk membuat janji temu baru.");
+                if (currentUserRole.equals("admin")) {
+                    navigateToTab(action);
+                } else {
+                    navigateToTab("Buat Janji"); // Navigate ke tab Buat Janji untuk user
+                }
                 break;
             case "👤 Daftar Pasien Baru":
                 navigateToTab(action);
-                showAlert("Daftar Pasien Baru", "Silakan isi form untuk mendaftarkan pasien baru.");
                 break;
             case "💳 Proses Klaim Asuransi":
-                navigateToTab(action);
-                selectInsuranceClaimsTab();
+            case "💳 Ajukan Klaim":
+                if (currentUserRole.equals("admin")) {
+                    navigateToTab(action);
+                    selectInsuranceClaimsTab();
+                } else {
+                    showAlert("Ajukan Klaim", "Untuk mengajukan klaim, silakan hubungi administrator atau customer service.");
+                }
                 break;
             case "📊 Lihat Laporan":
                 showAlert("Lihat Laporan", "Menampilkan dashboard dengan berbagai metrik dan laporan.");
                 break;
             case "🩺 Lihat Riwayat Medis":
-                navigateToTab(action);
-                showAlert("Lihat Riwayat Medis", "Pilih pasien dari daftar untuk melihat riwayat medis lengkap.");
+                if (currentUserRole.equals("admin")) {
+                    navigateToTab(action);
+                } else {
+                    showAlert("Riwayat Medis", "Riwayat medis Anda sedang dimuat...");
+                    // Bisa ditambahkan tab riwayat medis untuk user di sini
+                }
                 break;
             case "⚙️ Pengaturan Sistem":
-                showAlert("Pengaturan Sistem", "Sistem sedang berjalan dengan normal.\n• Database: In-Memory\n• Status: Online\n• Version: 2.0 Professional Edition");
+                if (currentUserRole.equals("admin")) {
+                    showAlert("Pengaturan Sistem", "Sistem sedang berjalan dengan normal.\n• Database: In-Memory\n• Status: Online\n• Version: 2.0 Professional Edition");
+                } else {
+                    showAlert("Profil Saya", "Halo " + currentUserId + "!\nRole: Pengguna\nNama: " + 
+                             (currentUserPatient != null ? currentUserPatient.getName() : "Tidak terdeteksi"));
+                }
+                break;
+            case "📊 Lihat Jadwal":
+                navigateToTab("Daftar Antrian");
+                break;
+            case "ℹ️ Informasi Kesehatan":
+                navigateToTab("📚 Informasi");
+                break;
+            case "👤 Profil Saya":
+                showAlert("Profil Saya", 
+                    "Halo " + currentUserId + "!\n" +
+                    "Role: " + (currentUserRole.equals("admin") ? "Administrator" : "Pengguna") + "\n" +
+                    (currentUserPatient != null ? 
+                     "Nama: " + currentUserPatient.getName() + "\n" +
+                     "Email: " + currentUserPatient.getEmail() + "\n" +
+                     "Tanggal Lahir: " + currentUserPatient.getBirthDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + "\n" +
+                     "Total Janji: " + currentUserPatient.getAppointments().size() :
+                     "Data pasien tidak ditemukan"));
                 break;
             default:
                 navigateToTab(action);
@@ -818,6 +1363,11 @@ public class IntegratedHealthAppGUI extends Application {
     }
 
     private void addPatient(TextField tfId, TextField tfName, TextField tfEmail, DatePicker dpBirth) {
+        if (!currentUserRole.equals("admin")) {
+            showAlert("Akses Ditolak", "Hanya administrator yang dapat menambah pasien.");
+            return;
+        }
+        
         String id = tfId.getText().trim();
         String name = tfName.getText().trim();
         String email = tfEmail.getText().trim();
@@ -842,6 +1392,11 @@ public class IntegratedHealthAppGUI extends Application {
     }
 
     private void addPoli(TextField tfId, TextField tfName, TextField tfDesc) {
+        if (!currentUserRole.equals("admin")) {
+            showAlert("Akses Ditolak", "Hanya administrator yang dapat menambah poli.");
+            return;
+        }
+        
         String id = tfId.getText().trim();
         String name = tfName.getText().trim();
         String desc = tfDesc.getText().trim();
@@ -864,6 +1419,11 @@ public class IntegratedHealthAppGUI extends Application {
     }
 
     private void addDokter(TextField tfId, TextField tfName, ComboBox<String> cbPoli, ComboBox<String> cbProv) {
+        if (!currentUserRole.equals("admin")) {
+            showAlert("Akses Ditolak", "Hanya administrator yang dapat menambah dokter.");
+            return;
+        }
+        
         String id = tfId.getText().trim();
         String name = tfName.getText().trim();
         String poliSel = cbPoli.getValue();
@@ -899,6 +1459,11 @@ public class IntegratedHealthAppGUI extends Application {
     }
 
     private void makeAppointment(DatePicker dpDate, TextField tfTime, TextField tfReason) {
+        if (!currentUserRole.equals("admin")) {
+            showAlert("Akses Ditolak", "Hanya administrator yang dapat membuat janji temu.");
+            return;
+        }
+        
         String patSel = cbPatientBox.getValue();
         String poliSel = cbPoliBox.getValue();
         String dokterSel = cbDokterBox.getValue();
@@ -940,6 +1505,11 @@ public class IntegratedHealthAppGUI extends Application {
     }
 
     private void registerInsurance(ComboBox<String> cbPatient, ComboBox<String> cbTier) {
+        if (!currentUserRole.equals("admin")) {
+            showAlert("Akses Ditolak", "Hanya administrator yang dapat mendaftarkan asuransi.");
+            return;
+        }
+        
         String patSel = cbPatient.getValue();
         String tierSel = cbTier.getValue();
         
@@ -964,6 +1534,11 @@ public class IntegratedHealthAppGUI extends Application {
     }
 
     private void submitClaim(TextField tfPatientId, TextField tfAmount, TextField tfProvider, TextField tfDesc) {
+        if (!currentUserRole.equals("admin")) {
+            showAlert("Akses Ditolak", "Hanya administrator yang dapat mengajukan klaim.");
+            return;
+        }
+        
         String pid = tfPatientId.getText().trim();
         String amtS = tfAmount.getText().trim();
         String prov = tfProvider.getText().trim();
@@ -985,6 +1560,108 @@ public class IntegratedHealthAppGUI extends Application {
         } catch (Exception ex) {
             showAlert("Error", ex.getMessage());
         }
+    }
+
+    private void enrollSelectedPatient() {
+        if (!currentUserRole.equals("admin")) {
+            showAlert("Akses Ditolak", "Hanya administrator yang dapat mendaftarkan asuransi.");
+            return;
+        }
+        
+        String sel = patientListView.getSelectionModel().getSelectedItem();
+        if (sel == null) {
+            showAlert("Peringatan", "Pilih pasien terlebih dahulu.");
+            return;
+        }
+        String id = sel.split(" - ")[0];
+        try {
+            insuranceService.enroll(id, Insurance.Tier.BASIC);
+            showAlert("Berhasil", "Pasien " + id + " berhasil didaftarkan asuransi (BASIC tier).");
+            refreshClaims();
+        } catch (Exception ex) {
+            showAlert("Error", ex.getMessage());
+        }
+    }
+
+    private void approveSelectedClaim() {
+        if (!currentUserRole.equals("admin")) {
+            showAlert("Akses Ditolak", "Hanya administrator yang dapat menyetujui klaim.");
+            return;
+        }
+        
+        String sel = claimsListView.getSelectionModel().getSelectedItem();
+        if (sel == null) {
+            showAlert("Peringatan", "Pilih klaim terlebih dahulu.");
+            return;
+        }
+        
+        String claimId = sel.split(" - ")[0];
+        boolean found = false;
+        
+        for (Patient patient : patientRepo.findAll()) {
+            if (!patient.isEnrolled()) continue;
+            Insurance insurance = patient.getInsurance();
+            for (Claim c : insurance.getClaims()) {
+                if (c.getId().equals(claimId)) {
+                    insuranceService.reviewClaim(patient.getId(), claimId, true);
+                    showAlert("Berhasil", "Klaim disetujui.");
+                    refreshClaims();
+                    found = true;
+                    break;
+                }
+            }
+            if (found) break;
+        }
+        
+        if (!found) {
+            showAlert("Tidak ditemukan", "Klaim tidak ditemukan dalam asuransi.");
+        }
+    }
+
+    private void editSelectedAppointment() {
+        if (!currentUserRole.equals("admin")) {
+            showAlert("Akses Ditolak", "Hanya administrator yang dapat mengedit janji temu.");
+            return;
+        }
+        
+        String sel = appointmentsListView.getSelectionModel().getSelectedItem();
+        if (sel == null) {
+            showAlert("Peringatan", "Pilih janji temu terlebih dahulu.");
+            return;
+        }
+        
+        String apptId = sel.split(" - ")[0];
+        Appointment appt = appointmentRepo.findById(apptId).orElse(null);
+        if (appt == null) {
+            showAlert("Tidak ditemukan", "Janji temu tidak ditemukan.");
+            return;
+        }
+        
+        showAlert("Edit Janji Temu", "Fungsi edit untuk: " + apptId + "\nDalam implementasi nyata, ini akan membuka dialog edit.");
+    }
+
+    private void deleteSelectedAppointment() {
+        if (!currentUserRole.equals("admin")) {
+            showAlert("Akses Ditolak", "Hanya administrator yang dapat menghapus janji temu.");
+            return;
+        }
+        
+        String sel = appointmentsListView.getSelectionModel().getSelectedItem();
+        if (sel == null) {
+            showAlert("Peringatan", "Pilih janji temu terlebih dahulu.");
+            return;
+        }
+        
+        String apptId = sel.split(" - ")[0];
+        appointmentRepo.delete(apptId);
+        
+        for (Patient pp : patientRepo.findAll()) {
+            pp.getAppointments().removeIf(a -> a.getId().equals(apptId));
+            patientRepo.save(pp.getId(), pp);
+        }
+        
+        refreshAppointments();
+        showAlert("Berhasil", "Janji temu dihapus: " + apptId);
     }
 
     // ===== NAVIGATION & UTILITY METHODS =====
@@ -1074,7 +1751,17 @@ public class IntegratedHealthAppGUI extends Application {
 
     private void refreshQueueDisplay(ListView<String> listView) {
         listView.getItems().clear();
-        List<Appointment> appts = new ArrayList<>(appointmentRepo.findAll());
+        List<Appointment> appts = new ArrayList<>();
+        
+        if (currentUserRole.equals("admin")) {
+            appts = new ArrayList<>(appointmentRepo.findAll());
+        } else {
+            // Untuk user, hanya tampilkan janji mereka sendiri
+            if (currentUserPatient != null) {
+                appts = new ArrayList<>(currentUserPatient.getAppointments());
+            }
+        }
+        
         appts.sort((a1, a2) -> a1.getDateTime().compareTo(a2.getDateTime()));
 
         if (appts.isEmpty()) {
@@ -1139,14 +1826,14 @@ public class IntegratedHealthAppGUI extends Application {
     private VBox createStyledVBox() {
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10));
-        vbox.getStyleClass().add("panel");
+        vbox.setStyle("-fx-background-color: white; -fx-border-color: #d0d0d0; -fx-border-radius: 4; -fx-border-width: 1; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 4, 0, 0, 1);");
         return vbox;
     }
 
     private Label createTitleLabel(String text) {
         Label label = new Label(text);
         label.setFont(TITLE_FONT);
-        label.getStyleClass().add("title");
+        label.setStyle("-fx-text-fill: " + TEXT_BLACK + "; -fx-font-weight: bold;");
         return label;
     }
 
@@ -1177,7 +1864,7 @@ public class IntegratedHealthAppGUI extends Application {
 
     private void setupListView(ListView<String> listView, double height) {
         listView.setPrefHeight(height);
-        listView.getStyleClass().add("list-view");
+        listView.setStyle("-fx-control-inner-background: white; -fx-border-color: #d0d0d0; -fx-border-width: 1; -fx-font-size: 11;");
     }
 
     private VBox createGradientPanel(String title, String subtitle) {
@@ -1274,6 +1961,20 @@ public class IntegratedHealthAppGUI extends Application {
                 .count());
     }
 
+    private String getMyAppointmentsCount() {
+        if (currentUserRole.equals("admin")) {
+            return "0";
+        } else {
+            return currentUserPatient != null ? 
+                String.valueOf(currentUserPatient.getAppointments().size()) : "0";
+        }
+    }
+
+    private String getMyClaimsCount() {
+        // For demo purposes, return a fixed number for regular users
+        return currentUserRole.equals("admin") ? "0" : "1";
+    }
+
     private void performSearch(String query) {
         if (query.isEmpty()) {
             showAlert("Pencarian", "Silakan masukkan kata kunci untuk mencari");
@@ -1283,6 +1984,11 @@ public class IntegratedHealthAppGUI extends Application {
     }
 
     private void handleCheckIn(ListView<String> queueList) {
+        if (!currentUserRole.equals("admin")) {
+            showAlert("Akses Ditolak", "Hanya administrator yang dapat melakukan check-in.");
+            return;
+        }
+        
         String sel = queueList.getSelectionModel().getSelectedItem();
         if (sel == null) {
             showAlert("⚠️ Perhatian", "Pilih antrian terlebih dahulu.");
@@ -1299,95 +2005,9 @@ public class IntegratedHealthAppGUI extends Application {
             }
             appt.setCheckedIn(true);
             appointmentRepo.save(appt.getId(), appt);
-            showAlert("✅ Berhasil", "Anda berhasil check in!");
+            showAlert("✅ Berhasil", "Pasien berhasil check in!");
             refreshQueueDisplay(queueList);
         }
-    }
-
-    private void enrollSelectedPatient() {
-        String sel = patientListView.getSelectionModel().getSelectedItem();
-        if (sel == null) {
-            showAlert("Peringatan", "Pilih pasien terlebih dahulu.");
-            return;
-        }
-        String id = sel.split(" - ")[0];
-        try {
-            insuranceService.enroll(id, Insurance.Tier.BASIC);
-            showAlert("Berhasil", "Pasien " + id + " berhasil didaftarkan asuransi (BASIC tier).");
-            refreshClaims();
-        } catch (Exception ex) {
-            showAlert("Error", ex.getMessage());
-        }
-    }
-
-    private void approveSelectedClaim() {
-        String sel = claimsListView.getSelectionModel().getSelectedItem();
-        if (sel == null) {
-            showAlert("Peringatan", "Pilih klaim terlebih dahulu.");
-            return;
-        }
-        
-        String claimId = sel.split(" - ")[0];
-        boolean found = false;
-        
-        for (Patient patient : patientRepo.findAll()) {
-            if (!patient.isEnrolled()) continue;
-            Insurance insurance = patient.getInsurance();
-            for (Claim c : insurance.getClaims()) {
-                if (c.getId().equals(claimId)) {
-                    insuranceService.reviewClaim(patient.getId(), claimId, true);
-                    showAlert("Berhasil", "Klaim disetujui.");
-                    refreshClaims();
-                    found = true;
-                    break;
-                }
-            }
-            if (found) break;
-        }
-        
-        if (!found) {
-            showAlert("Tidak ditemukan", "Klaim tidak ditemukan dalam asuransi.");
-        }
-    }
-
-    private void editSelectedAppointment() {
-        String sel = appointmentsListView.getSelectionModel().getSelectedItem();
-        if (sel == null) {
-            showAlert("Peringatan", "Pilih janji temu terlebih dahulu.");
-            return;
-        }
-        
-        String apptId = sel.split(" - ")[0];
-        Appointment appt = appointmentRepo.findById(apptId).orElse(null);
-        if (appt == null) {
-            showAlert("Tidak ditemukan", "Janji temu tidak ditemukan.");
-            return;
-        }
-        
-        showAlert("Edit Janji Temu", "Fungsi edit untuk: " + apptId + "\nDalam implementasi nyata, ini akan membuka dialog edit.");
-    }
-
-    private void deleteSelectedAppointment() {
-        String sel = appointmentsListView.getSelectionModel().getSelectedItem();
-        if (sel == null) {
-            showAlert("Peringatan", "Pilih janji temu terlebih dahulu.");
-            return;
-        }
-        
-        String apptId = sel.split(" - ")[0];
-        appointmentRepo.delete(apptId);
-        
-        for (Patient pp : patientRepo.findAll()) {
-            pp.getAppointments().removeIf(a -> a.getId().equals(apptId));
-            patientRepo.save(pp.getId(), pp);
-        }
-        
-        refreshAppointments();
-        showAlert("Berhasil", "Janji temu dihapus: " + apptId);
-    }
-
-    private String adjustBrightness(String hex, int adjustment) {
-        return hex;
     }
 
     private void clearFields(TextField... fields) {
